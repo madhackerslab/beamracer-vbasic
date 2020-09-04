@@ -1,13 +1,15 @@
-;*****************************************************************************
-;* VBASIC
-;* Laubzega/MHL in 2019-2020
-;*
-;* Compatible with ca65 assembler (part of https://github.com/cc65).
-;*****************************************************************************
+; Beam Racer * https://beamracer.net
+; Video and Display List coprocessor board for the Commodore 64
+; Copyright (C)2019-2020 Mad Hackers Lab
+;
+; https://github.com/madhackerslab/beamracer-examples
+;
+; VBASIC
+;
+; Compatible with ca65 assembler (part of https://github.com/cc65).
+
         .export __HIGHMEM_SIZE
 
-;        .include "../../silverdr/64er/include/c64.i"
-;        .include "../../silverdr/64er/include/sd_macros.i"
         .include "os.i"
         .include "vlib/vasyl.s"
 
