@@ -4,9 +4,11 @@
  
  https://beamracer.net
 
-# VBasic
+# VBASIC
 
 VBASIC an easy, but powerful tool for programming Beam Racer with BASIC.
+
+![Sequencer](img/sequencer.gif)
 
 # Support
 
