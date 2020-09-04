@@ -16,9 +16,9 @@ VBASIC an easy, but powerful tool for programming Beam Racer with BASIC.
 
 # Bug reports
 
- Please report any issue spotted using [GitHub's project tracker](https://github.com/madhackerslab/beamracer-examples/issues).
+ Please report any issue spotted using [GitHub's project tracker](https://github.com/madhackerslab/beamracer-vbasic/issues).
  If you'd like to contribute to the this project, please send regular pull request. But we recommend to open new
- [ticket](https://github.com/madhackerslab/beamracer-examples/issues) before doing any work.
+ [ticket](https://github.com/madhackerslab/beamracer-vbasic/issues) before doing any work.
 
 # Cloning the repository
 
