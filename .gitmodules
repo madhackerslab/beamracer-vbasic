@@ -1,0 +1,3 @@
+[submodule "vlib"]
+	path = vlib
+	url = https://github.com/madhackerslab/vlib
