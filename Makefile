@@ -3,7 +3,7 @@ CL65=cl65
 LD65=ld65
 HOST_OS := $(shell uname)
 
-basic: basic.s ../vlib/vasyl.s c64-asm.cfg about_string.i
+basic: basic.s vlib/vasyl.s c64-asm.cfg about_string.i
 	$(CL65) -C ./c64-asm.cfg -u __EXEHDR__ $<
 
 about_string.i: FORCE
