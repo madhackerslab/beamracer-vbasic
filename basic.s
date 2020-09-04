@@ -6,8 +6,9 @@
 ;*****************************************************************************
         .export __HIGHMEM_SIZE
 
-        .include "../../silverdr/64er/include/c64.i"
-        .include "../../silverdr/64er/include/sd_macros.i"
+;        .include "../../silverdr/64er/include/c64.i"
+;        .include "../../silverdr/64er/include/sd_macros.i"
+        .include "os.i"
         .include "vlib/vasyl.s"
 
 COPIER_COUNT = 3    ; two hardware and one software (writing to main memory)
@@ -59,7 +60,10 @@ token_id .set token_id + 1
         ldx #32
         jsr copy_pages
 
-        c64_turn_basic_off
+        ; turn BASIC ROM off
+        lda $01
+        and #$fe
+        sta $01
 
         lda #<KEYWORD_PTRS_ORIG
         sta src
@@ -187,7 +191,12 @@ warmstart_handler:
         and #$01
         beq skip_reinit ; BASIC ROM is already off
         jsr unconfig_copiers
-        c64_turn_basic_off
+
+        ; turn BASIC ROM off
+        lda $01
+        and #$fe
+        sta $01
+
         lda racer_mode
         cmp #2
         beq racer_after_rsr
