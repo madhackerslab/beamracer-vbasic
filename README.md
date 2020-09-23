@@ -25,7 +25,7 @@ VBASIC an easy, but powerful tool for programming Beam Racer with BASIC.
  **NOTE:** this project uses [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules),
  it's required to either use `--recurse-submodules` to get all the dependencies during cloning:
 
-    git clone --recurse-submodules https://github.com/madhackerslab/beamracer-examples
+    git clone --recurse-submodules https://github.com/madhackerslab/beamracer-vbasic
 
  or to pull them manually by doing:
 
