@@ -2,9 +2,14 @@ CA65=ca65
 CL65=cl65
 LD65=ld65
 HOST_OS := $(shell uname)
+PRODUCT := bin/vbasic.c64.prg
 
-basic: basic.s vlib/vasyl.s c64-asm.cfg about_string.i
-	$(CL65) -C ./c64-asm.cfg -u __EXEHDR__ $<
+.PHONY: all clean
+
+all: $(PRODUCT)
+
+$(PRODUCT): basic.s vlib/vasyl.s c64-asm.cfg about_string.i
+	$(CL65) -o $(PRODUCT) -C ./c64-asm.cfg -u __EXEHDR__ $<
 
 about_string.i: FORCE
 	@printf ".byte \"revision: " >$@
@@ -22,4 +27,4 @@ endif
 FORCE:
 
 clean:
-	rm -f basic.o basic about_string.i
+	rm -f basic.o $(PRODUCT) about_string.i
