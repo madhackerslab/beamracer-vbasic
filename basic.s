@@ -54,16 +54,18 @@ token_id .set token_id + 1
         jsr copy_pages
 
         ; copy BASIC ROM to RAM
+        ; TODO - initialise in a KERNAL patch friendly way
         lda #<BASIC_BASE
         sta src
         sta dst
         lda #>BASIC_BASE
         sta src + 1
         sta dst + 1
-        ldx #32
+        ldx #$20 ; $2000 bytes
         jsr copy_pages
 
         ; turn BASIC ROM off
+        ; TODO - initialise in a KERNAL patch friendly way
         lda $01
         and #$fe
         sta $01
@@ -111,12 +113,12 @@ token_id .set token_id + 1
         lda #>print_hook
         sta $ab20
 
+        ; IMAIN Vector to the Main BASIC Program Loop
         lda $302
         sta warm_start_continuation + 1
         lda $303
         sta warm_start_continuation + 2
-
-        ; patch error handler vector to reinitialize us after R/S-R
+        ; patch IMAIN vector to reinitialize us after R/S-R
         lda #<warmstart_handler
         sta $302
         lda #>warmstart_handler
@@ -147,7 +149,7 @@ prepare_register_names:
         lda #>register_names
         sta src+1
 
-        ldx #0
+        ldx #$00
 next_register:
         lda src
         sta register_table_lo,x
@@ -156,7 +158,7 @@ next_register:
         inx
 
 loop_reg_name:
-        ldy #0
+        ldy #$00
         lda (src),y
         inc src
         bne @no_carry
@@ -170,7 +172,7 @@ end_of_registers:
         rts
 
 copy_pages:
-        ldy #0
+        ldy #$00
 copy_bytes:
         lda (src),y
         sta (dst),y
@@ -183,16 +185,16 @@ copy_bytes:
         rts
 
 missing_string:
-        ;.byte "missing",0
-        .byte "none ",0
+        .asciiz "none "
 
 highmem_data:
         .segment "HIGHCODE"
 highmem_data_start:
 warmstart_handler:
         lda $01
-        and #$01
-        beq skip_reinit ; BASIC ROM is already off
+        and #$03
+        cmp #$03
+        bne skip_reinit ; BASIC ROM is already off
         jsr unconfig_copiers
 
         ; turn BASIC ROM off
@@ -201,9 +203,9 @@ warmstart_handler:
         sta $01
 
         lda racer_mode
-        cmp #2
+        cmp #$02
         beq racer_after_rsr
-        lda #0
+        lda #$00
         sta racer_mode
 racer_after_rsr:
         jsr knock_knock
@@ -223,7 +225,7 @@ warm_start_continuation:
         jmp (JMPER+1)
 
 unconfig_copiers:
-        ldx #3
+        ldx #$03
         lda #$80        ; no "current" copier
 clear_copier_state:     ; all copiers unconfigured
         sta current_copier,x
@@ -235,7 +237,7 @@ clear_copier_state:     ; all copiers unconfigured
 knock_knock:
         lda racer_mode
         beq @end
-        ldx #255
+        ldx #$ff
         cpx VREG_CONTROL
         bne @knocked
         lda #$42
@@ -247,7 +249,7 @@ knock_knock:
 
         lda #$ff
         sta racer_mode
-        ldy #0
+        ldy #$00
 @loop:
         lda missing_string,y
         beq @end
@@ -260,11 +262,11 @@ knock_knock:
         lsr
         lsr
         lsr
-        cmp #1
+        cmp #$01
         beq @end
 
         sec
-        sbc #1
+        sbc #$01
         clc
         adc #'0'
         sta state_string+3
@@ -272,7 +274,7 @@ knock_knock:
         rts
 
 basic_string:
-        .byte $93,$0d, " *** vbasic v1.0 by laubzega/mhl'20 ***", $0d, $0d
+        .byte $93,$0d, " *** vbasic v1.1 by laubzega/mhl'20 ***", $0d, $0d
         .byte " "
 beamracer_string:
         .byte "beamracer "
@@ -431,7 +433,7 @@ get_signed_byte:
         tya
         tax
         rts
-        
+
 
 ; *****************************************************************************
 ; *** VCFG keyword implementation                                           ***
@@ -502,7 +504,6 @@ no_bank_specified:
         stx selected_bank
 
         ldx dst
-;        stx current_copier  ; set copier as current
         stx copier_saver    ; set copier as default
         lda #0              ; mark copier as configured
         sta copier_state,x
@@ -933,9 +934,8 @@ match_found:
 @one_byte_op:
         ; print two spaces to account for one fewer hex byte
         ; displayed for one-byte commands
-        lda #' '
-        jsr $ab47
-        jsr $ab47
+        ldy #$02
+        jsr print_y_spaces
 @dont_print_spaces:
         lda #>(loop_decoder - 1)
         pha
@@ -955,11 +955,10 @@ SETAB_DECODE:
         ldx #setb_opcode - opcodes
 @it_is_seta:
         jsr print_opcode
-        ;lda #12
-        jsr print_tab
+        jsr print_2nd_tab
         lda second_byte
         jsr print_S_hex_byte
-        jmp spacefill
+        jmp pad_spaces
 
 MASKREL_DECODE:
         ldx #setmask_opcode - opcodes
@@ -980,7 +979,6 @@ MASKREL_DECODE:
         beq @not_persistent
         lda #'p'
         jsr $ab47
-        inc char_counter    ; account for "P"
 @not_persistent:
         ldx #'v'
         lda current_opcode
@@ -990,16 +988,13 @@ MASKREL_DECODE:
 @is_vertical:
         txa
         jsr $ab47
-        lda #9
-        inc char_counter    ; account for either "v" or "h"
-        jsr print_adj_tab
+        jsr print_1st_tab
 
         lda current_opcode
         tax
         and #VASYL_DELAYH_VALUE ^ VASYL_DELAYV_VALUE
         bne @vertical_decode
-        lda #' '
-        jsr $ab47
+        jsr $ab3f ; print SPACE
 
         ; we're only interested in the second argument when processing DELAY*
         lda mask_or_delay
@@ -1014,8 +1009,7 @@ MASKREL_DECODE:
         rol
         rol
         jsr print_S_hex_byte
-        lda #','
-        jsr $ab47
+        jsr print_comma
 @no_v_in_delayh:
         lda second_byte
         and #$3f
@@ -1024,7 +1018,7 @@ MASKREL_DECODE:
 
 @vertical_decode:
         txa
-        and #1
+        and #$01
         ldy second_byte
         jsr print_S_hex_9bit
 
@@ -1050,13 +1044,7 @@ binary_decode_maybe:
 @print_binary:
         jmp print_binary
 @end:
-spacefill:
-        lda #39
-        sec
-        sbc $d3
-        tay
-        jmp print_y_spaces
-
+        jmp pad_spaces
 
 WAIT_DECODE:
         lda current_opcode
@@ -1068,31 +1056,29 @@ WAIT_DECODE:
 
         ldx #end_opcode - opcodes
         jsr print_opcode
-        jmp spacefill
+        jmp pad_spaces
 
 @not_end_opcode:
         ldx #wait_opcode - opcodes
         jsr print_opcode
-        lda #9
-        jsr print_adj_tab
+        jsr print_1st_tab
 
         lda current_opcode
         pha
-        and #1
+        and #$01
         ldy second_byte
         jsr print_S_hex_9bit
-        lda #','
-        jsr $ab47
+        jsr print_comma
         pla
         lsr
         and #63
         jsr print_S_hex_byte
-        jmp spacefill
+        jmp pad_spaces
 
 MOV_DECODE:
         ldx #mov_opcode - opcodes
         jsr print_opcode
-        jsr print_tab
+        jsr print_2nd_tab
         lda current_opcode
         tax
         and #%01000000
@@ -1108,8 +1094,7 @@ plain_mov:
 mov_shared:
         pha
         jsr print_S_hex_byte
-        lda #','
-        jsr $ab47
+        jsr print_comma
         lda second_byte
         jsr print_S_hex_byte
         pla
@@ -1118,13 +1103,12 @@ mov_shared:
 XFER_DECODE:
         ldx #xfer_opcode - opcodes
         jsr print_opcode
-        jsr print_tab
+        jsr print_2nd_tab
         lda second_byte
         and #$7f
         pha
         jsr print_S_hex_byte
-        lda #','
-        jsr $ab47
+        jsr print_comma
         lda #'('
         jsr $ab47
         lda second_byte
@@ -1141,8 +1125,7 @@ XFER_DECODE:
 BRA_DECODE:
         ldx #bra_opcode - opcodes
         jsr print_opcode
-        lda #8
-        jsr print_adj_tab
+        jsr print_1st_tab
         lda #'$'
         jsr $ab47
 
@@ -1156,8 +1139,8 @@ BRA_DECODE:
 
         ldy src
         lda src + 1
-        jmp print_hex_word
-
+        jsr print_hex_word
+        jmp pad_spaces ; Add SPACE padding
 
 WAITBAD_DECODE:
 NOP_DECODE:
@@ -1170,29 +1153,26 @@ IRQ_DECODE:
         tay
         ldx one_byte_ops_idx,y
         jsr print_opcode
-        lda #$1c
-        jmp print_adj_tab
+        jmp pad_spaces
 
 BADLINE_DECODE:
         ldx #badline_opcode - opcodes
         jsr print_opcode
-        lda #12
-        jsr print_adj_tab
+        jsr print_2nd_tab
         lda current_opcode
         and #$07
-        jsr print_hex_digit
-        jmp spacefill
+        jsr print_S_hex_byte
+        jmp pad_spaces
 
 
 WAITREP_DECODE:
         ldx #waitrep_opcode - opcodes
         jsr print_opcode
-        lda #12
-        jsr print_adj_tab
+        jsr print_3rd_tab
         lda current_opcode
         and #$01
         jsr print_hex_digit
-        jmp spacefill
+        jmp pad_spaces
 
 DECAB_DECODE:
         ldx #deca_opcode - opcodes
@@ -1202,35 +1182,39 @@ DECAB_DECODE:
         ldx #decb_opcode - opcodes
 @it_is_deca:
         jsr print_opcode
-        jmp spacefill
+        jmp pad_spaces
 
-print_tab:
-        lda #10
+print_1st_tab:
+        lda #$12
+        bne print_adj_tab
+print_2nd_tab:
+        lda #$13
+        bne print_adj_tab
+print_3rd_tab:
+        lda #$15
+        bne print_adj_tab
+pad_spaces:
+        lda #$27      ; last column no.
 print_adj_tab:
         sec
-        sbc char_counter
+        sbc PNTR      ; Cursor Column on Current Line
+        beq tab_done  ; Shouldn't need to account for negative... hopefully
         tay
 print_y_spaces:
-        lda #' '
-tab_loop:
-        jsr $ab47
+        jsr $ab3f
         dey
-        bne tab_loop
+        bne print_y_spaces
+tab_done:
         rts
 
+print_comma:
+        lda #','
+        jmp $ab47
+
 print_opcode:
-        lda #' '
-        jsr $ab47 ; print character
-;        cpx #unknown_opcode - opcodes
-;        beq @skip_v
-;        lda #'v'
-;@skip_v:
-        jsr $ab47 ; print character
-        lda #$00
-        sta char_counter
+        jsr $ab3f ; print SPACE
 print_loop:
         lda opcodes,x
-        inc char_counter
         inx
         pha
         and #$7f
@@ -1255,7 +1239,7 @@ two_arguments:
                      ; type mismatch
         ;jsr GETADR   ; $b7f7 - Convert a Floating Point Number to
                      ; an Unsigned Two-Byte Integer in LINNUM ($14/$15)
-        jsr $b7fb
+        jsr $b7fb    ; part of GETADR, skips sign checking
         lda LINNUMLO ; $14
         pha
         lda LINNUMHI ; $15
@@ -1304,7 +1288,7 @@ one_argument:
         jsr $ad8a   ; evaluate expression and check is numeric, else do
                     ; type mismatch
         ;jsr $b7f7  ; check if positive 16-bit value
-        jsr $b7fb   ; check if 16-bit value
+        jsr $b7fb   ; check if 16-bit value (part of GETADR, skips sign check)
         lda $14
         sta firstarg_lo
         lda $15
@@ -1317,7 +1301,7 @@ one_argument:
         sta $15
         bit function_flag
         bpl @not_function2
-        jsr $aef7   ; scan for ")"
+        jsr CHKCLS   ; scan for ")"
 @not_function2:
         rts
 
@@ -1342,7 +1326,7 @@ get_copier_id:
         ldx #9      ; "Illegal device number"
         jmp $a437   ; ERROR
 @copier_ok:
-	stx current_copier
+        stx current_copier
         bit vend_flag   ; are we processing VEND keyword?
         bmi no_comma
         jsr CHKCOM  ; $aefd - scan for ",", else do syntax error then warm start
@@ -1567,7 +1551,7 @@ current_copier_ok:
         dex
         beq @copier1
 
-	    ldx copier_banks
+        ldx copier_banks
         jsr preserve_ctrl_set_bank_from_x ; sets bank from X, preserves A
         sta VREG_PORT0
         bit two_args_flag
@@ -1576,7 +1560,7 @@ current_copier_ok:
         bmi @no_second_arg ; unconditional
 
 @copier1:
-	    ldx copier_banks + 1
+        ldx copier_banks + 1
         jsr preserve_ctrl_set_bank_from_x ; sets bank from X, preserves A
         sta VREG_PORT1
         bit two_args_flag
@@ -1938,7 +1922,7 @@ VBRA_IMPL:
 @vbra_impl_function:
         inc function_flag
         jsr one_argument
-        
+
         lda function_flag
         and #1
         beq @check_bounds
@@ -2706,15 +2690,12 @@ binary_store:
 print_binary:
         sta binary_store
         stx binary_store+1
-        ldy #8
+        ldy #$08
         php
-        bcc @space_loop
-        ldy #5
-@space_loop:
-        lda #' '
-        jsr $ab47
-        dey
-        bne @space_loop
+        bcc @print_spaces
+        ldy #$05
+@print_spaces:
+        jsr print_y_spaces
         lda #'%'
         jsr $ab47
 
@@ -2738,8 +2719,7 @@ print_binary:
 
 print_reg_name:
         tay
-        lda #' '
-        jsr $ab47
+        jsr $ab3f ; print SPACE
         lda #':'
         jsr $ab47
 
@@ -2761,15 +2741,7 @@ valid_reg_name:
         jsr $ab47
         pla
         bpl @loop
-@padding_loop:
-        cpy #$09
-        beq @done
-        lda #' '
-        jsr $ab47
-        iny
-        bne @padding_loop
-@done:
-        rts
+        jmp pad_spaces
 
 register_names:
         keyword "sp0x"
@@ -3059,8 +3031,6 @@ register_table_lo:
         .res $51    ; +1 extra byte for end marker
 register_table_hi:
         .res $51
-char_counter:
-        .res 1
 firstarg_lo:
         .res 1
 firstarg_hi:
