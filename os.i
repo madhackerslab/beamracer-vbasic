@@ -2,12 +2,13 @@
 ; Video and Display List coprocessor board for the Commodore 64
 ; Copyright (C)2019-2020 Mad Hackers Lab
 ;
-; https://github.com/madhackerslab/beamracer-examples
+; https://github.com/madhackerslab/beamracer-vbasic
 ;
 
-LINNUM   = $14      ; Integer Line Number Value
+LINNUM   = $14   ; Integer Line Number Value
 LINNUMLO = $14
 LINNUMHI = $15
+PNTR     = $d3   ; Cursor Column on Current Line
 FREEZP   = $fb
 
 BASIC_BASE  = $a000
@@ -19,3 +20,4 @@ AYINT    = $b1bf ; Convert a Floating Point Number to a Signed Integer
 GETBYT   = $b79e ; Parse A into uint8_t in X
 GETADR   = $b7f7 ; Convert a Floating Point Number to an Unsigned Two-Byte Integer in LINNUM ($14/$15)
 
+SCREEN   = $ffed ; Read Number of Screen Rows and Columns into .Y and .X
