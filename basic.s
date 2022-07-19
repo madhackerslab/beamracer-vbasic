@@ -1666,6 +1666,7 @@ BANK_IMPL:
 ; *****************************************************************************
 ; *** RACER keyword implementation                                          ***
 ; *** 0 - turn off, 1 - turn on, 2 - turn on and survive RUN/STOP-RESTORE   ***
+; *** 3 - turn BeamRacer on and disable VBASIC extension                    ***
 ; *****************************************************************************
 RACER_IMPL:
         nop
@@ -1674,6 +1675,7 @@ RACER_IMPL:
 
         jsr $b79e      ; get byte parameter
         cpx #$03       ; argument must be <= 3
+	beq vbasic_quit
         bcs illegal_quantity
         bit racer_mode ; negative means there is no BeamRacer installed
         bpl @set_racer_mode
@@ -1704,6 +1706,16 @@ get_arg_less_than_8:
         bcs illegal_quantity
         txa
         rts
+
+; *****************************************************************************
+; *** this does a presumably graceful VBASIC exit                           ***
+; *****************************************************************************
+vbasic_quit:
+	lda $01
+	ora #$01
+	sta $01
+	jsr $e453             ; re-initialise the BASIC vector table
+	jmp $a474             ; do warm-start
 
 
 ; *****************************************************************************
