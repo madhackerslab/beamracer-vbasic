@@ -122,7 +122,8 @@ token_id .set token_id + 1
         lda #>warmstart_handler
         sta $303
 
-        ; we also need to evaluate $xxxx numbers
+	; we also need to evaluate $xxxx numbers, so
+	; we redirect IEVAL to our evaluation routine
         lda #<evaluate_expression
         sta $030a
         lda #>evaluate_expression
@@ -145,13 +146,13 @@ prepare_register_names:
         lda #<register_names
         sta src
         lda #>register_names
-        sta src+1
+        sta src + 1
 
         ldx #0
 next_register:
         lda src
         sta register_table_lo,x
-        lda src+1
+        lda src + 1
         sta register_table_hi,x
         inx
 
@@ -160,7 +161,7 @@ loop_reg_name:
         lda (src),y
         inc src
         bne @no_carry
-        inc src+1
+        inc src + 1
 @no_carry:
         tay
         beq end_of_registers
@@ -272,7 +273,7 @@ knock_knock:
         rts
 
 basic_string:
-        .byte $93,$0d, " *** vbasic v1.0 by laubzega/mhl'20 ***", $0d, $0d
+        .byte $93,$0d, "   **** commodore 64 vbasic 1.2 ****", $0d, $0d
         .byte " "
 beamracer_string:
         .byte "beamracer "
@@ -431,7 +432,7 @@ get_signed_byte:
         tya
         tax
         rts
-        
+
 
 ; *****************************************************************************
 ; *** VCFG keyword implementation                                           ***
@@ -1291,7 +1292,7 @@ one_argument:
         jsr $aefa   ; scan for "(", else do syntax error then warm start
 @not_function:
         lda function_flag
-        and #1
+        and #$01
         beq @not_offset
         jsr $0079
         cmp #$AC    ; token "*"
@@ -1299,7 +1300,7 @@ one_argument:
         jsr $0073
 ; notify the caller that we're indeed processing an offset
         tsx
-        dec $101,x
+        dec $0101,x
 @not_offset:
         jsr $ad8a   ; evaluate expression and check is numeric, else do
                     ; type mismatch
@@ -1503,18 +1504,18 @@ mov_common:
 
 store_or_output:    ; A - hibyte, Y - lobyte, C - one arg if set
         tax
-        lda #255
-        adc #0
+        lda #$ff
+        adc #$00
         sta two_args_flag
         bne @two_args
-        ldy #0
+        ldy #$00
 @two_args:
         txa
         bit function_flag
         bpl transfer_to_memory
 
 return_uint16:
-        ldx #0      ; "manual" int to string conversion
+        ldx #$00    ; "manual" int to string conversion
         stx $0d     ; due to values >32767 that would normally
         sty $62
         sta $63     ; present as negative
@@ -1588,13 +1589,13 @@ current_copier_ok:
 copier2_vmov_to_main_ram:
         ldx copier_adr
         stx src
-        ldx copier_adr+1
-        stx src+1
+        ldx copier_adr + 1
+        stx src + 1
         pha
         tya
         tax
         pla
-        ldy #0
+        ldy #$00
         sta (src),y
         jsr increment_copier
         bit two_args_flag
@@ -1627,9 +1628,9 @@ transfer_from_memory_copier_y:
 vmov_from_main_memory:
         ldx copier_adr
         stx src
-        ldx copier_adr+1
-        stx src+1
-        ldy #0
+        ldx copier_adr + 1
+        stx src + 1
+        ldy #$00
         lda (src),y
         pha
         jsr inc_and_store_copier
@@ -1658,7 +1659,7 @@ BANK_IMPL:
         .repeat CONTROL_RAMBANK_BIT
         lsr
         .endrep
-        ldy #0
+        ldy #$00
         jmp return_uint16
 
 
@@ -1672,7 +1673,7 @@ RACER_IMPL:
         bmi @racer_impl_function
 
         jsr $b79e      ; get byte parameter
-        cpx #3         ; argument must be <= 3
+        cpx #$03       ; argument must be <= 3
         bcs illegal_quantity
         bit racer_mode ; negative means there is no BeamRacer installed
         bpl @set_racer_mode
@@ -1680,7 +1681,7 @@ RACER_IMPL:
 
 @set_racer_mode:
         stx racer_mode
-        cpx #0
+        cpx #$00
         beq @end
         jmp knock_knock
 @end:
@@ -1693,13 +1694,13 @@ RACER_IMPL:
         jsr $aefa   ; scan for "(", else do syntax error then warm start
         jsr $aef7   ; scan for ")"
         lda racer_mode
-        ldy #0
+        ldy #$00
         jmp return_uint16
 
 
 get_arg_less_than_8:
         jsr $b79e   ; get byte parameter
-        cpx #8     ; argument "horizontal" must be <= 7
+        cpx #$08    ; argument "horizontal" must be <= 7
         bcs illegal_quantity
         txa
         rts
@@ -1731,7 +1732,7 @@ VWAIT_IMPL:
         bit function_flag
         bmi vwait_impl_function
 
-        ldx #0 ; non-VEND flag
+        ldx #$00 ; non-VEND flag
         jsr get_copier_id
 
 vwait_impl_function:
@@ -1783,12 +1784,12 @@ VDELAYH_IMPL:
         bit function_flag
         bmi vdelayh_impl_function
 
-        ldx #0 ; non-VEND flag
+        ldx #$00 ; non-VEND flag
         jsr get_copier_id
 
 vdelayh_impl_function:
         jsr GETBYT ; $b79e - get byte parameter ; Parse A into uint8_t in X
-        ldy #0
+        ldy #$00
         jsr $0079
         cmp #','
         bne @no_second_arg
@@ -1805,7 +1806,7 @@ vdelayh_impl_function:
         bcs illegal_quantity
         stx firstarg_lo
 
-        cpy #4
+        cpy #$04
         bcs illegal_quantity
         tya
         clc
@@ -1827,7 +1828,7 @@ VDELAYV_IMPL:
         bit function_flag
         bmi vdelayv_impl_function
 
-        ldx #0
+        ldx #$00
         jsr get_copier_id
 
 vdelayv_impl_function:
@@ -1844,7 +1845,7 @@ vdelayv_impl_function:
 increment_copier:
         bit copier_step
         bpl @step_is_positive
-        lda #0
+        lda #$00
         sec
         sbc src
         beq @step_larger    ; LSB is 0, so MSB will have to be decreased
@@ -1938,7 +1939,7 @@ VBRA_IMPL:
 @vbra_impl_function:
         inc function_flag
         jsr one_argument
-        
+
         lda function_flag
         and #1
         beq @check_bounds
@@ -2088,7 +2089,7 @@ VMASK_IMPL:
         bit function_flag
         bmi @vsetmask_impl_function
 
-        ldx #0
+        ldx #$00
         jsr get_copier_id
 
 @vsetmask_impl_function:
